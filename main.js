@@ -335,63 +335,121 @@ function findTemplateSlots(img) {
     
     const imageData = tempCtx.getImageData(0, 0, width, height);
     const data = imageData.data;
+    const totalPixels = width * height;
     
-    const boxes = [];
+    const isHole = new Uint8Array(totalPixels);
+    
+    for (let p = 0; p < totalPixels; p++) {
+        const i = p * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const a = data[i + 3];
+        
+        // Detect greenscreen OR transparency
+        const isGreen = a > 50 && g > 75 && (g - r) > 20 && (g - b) > 20;
+        const isTransparent = a < 30;
+        
+        if (isGreen || isTransparent) {
+            isHole[p] = 1;
+            if (isGreen) {
+                data[i + 3] = 0; // Remove green so photo shows behind
+            }
+        }
+    }
+    
+    // Put modified pixels back to temp canvas (transparent holes)
+    tempCtx.putImageData(imageData, 0, 0);
+    
+    // Proper Connected Component Labeling using Breadth-First Search (BFS)
+    const visited = new Uint8Array(totalPixels);
+    const queue = new Int32Array(totalPixels);
+    const rawBoxes = [];
     
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
-            let i = (y * width + x) * 4;
-            let r = data[i], g = data[i+1], b = data[i+2], a = data[i+3];
-            
-            // Check if pixel is predominantly green
-            if (a > 0 && g > r + 25 && g > b + 25 && g > 80) {
-                // Make it transparent so photos can show through
-                data[i+3] = 0;
+            const startIdx = y * width + x;
+            if (isHole[startIdx] && !visited[startIdx]) {
+                let minX = x, maxX = x, minY = y, maxY = y;
+                let pixelCount = 0;
                 
-                // Cluster into bounding boxes
-                let foundBoxes = [];
-                for (let box of boxes) {
-                    if (x >= box.minX - 2 && x <= box.maxX + 2 && y >= box.minY - 2 && y <= box.maxY + 2) {
-                        foundBoxes.push(box);
+                visited[startIdx] = 1;
+                queue[0] = startIdx;
+                let head = 0;
+                let tail = 1;
+                
+                while (head < tail) {
+                    const curr = queue[head++];
+                    const cx = curr % width;
+                    const cy = (curr / width) | 0;
+                    pixelCount++;
+                    
+                    if (cx < minX) minX = cx;
+                    if (cx > maxX) maxX = cx;
+                    if (cy < minY) minY = cy;
+                    if (cy > maxY) maxY = cy;
+                    
+                    // 4-directional flood fill
+                    // Up
+                    if (cy > 0) {
+                        const n = curr - width;
+                        if (isHole[n] && !visited[n]) {
+                            visited[n] = 1;
+                            queue[tail++] = n;
+                        }
+                    }
+                    // Down
+                    if (cy < height - 1) {
+                        const n = curr + width;
+                        if (isHole[n] && !visited[n]) {
+                            visited[n] = 1;
+                            queue[tail++] = n;
+                        }
+                    }
+                    // Left
+                    if (cx > 0) {
+                        const n = curr - 1;
+                        if (isHole[n] && !visited[n]) {
+                            visited[n] = 1;
+                            queue[tail++] = n;
+                        }
+                    }
+                    // Right
+                    if (cx < width - 1) {
+                        const n = curr + 1;
+                        if (isHole[n] && !visited[n]) {
+                            visited[n] = 1;
+                            queue[tail++] = n;
+                        }
                     }
                 }
                 
-                if (foundBoxes.length > 0) {
-                    let mainBox = foundBoxes[0];
-                    mainBox.minX = Math.min(mainBox.minX, x);
-                    mainBox.maxX = Math.max(mainBox.maxX, x);
-                    mainBox.minY = Math.min(mainBox.minY, y);
-                    mainBox.maxY = Math.max(mainBox.maxY, y);
-                    
-                    // Merge other touching boxes into mainBox
-                    for (let j = 1; j < foundBoxes.length; j++) {
-                        let bBox = foundBoxes[j];
-                        mainBox.minX = Math.min(mainBox.minX, bBox.minX);
-                        mainBox.maxX = Math.max(mainBox.maxX, bBox.maxX);
-                        mainBox.minY = Math.min(mainBox.minY, bBox.minY);
-                        mainBox.maxY = Math.max(mainBox.maxY, bBox.maxY);
-                        boxes.splice(boxes.indexOf(bBox), 1);
-                    }
-                } else {
-                    boxes.push({ minX: x, maxX: x, minY: y, maxY: y });
+                const boxW = maxX - minX + 1;
+                const boxH = maxY - minY + 1;
+                
+                // Filter out small noise artifacts (like tiny green leaves/decorations)
+                const minDimension = Math.max(20, Math.min(width, height) * 0.03);
+                const minPixels = Math.max(200, (minDimension * minDimension) * 0.25);
+                
+                if (boxW >= minDimension && boxH >= minDimension && pixelCount >= minPixels) {
+                    rawBoxes.push({ minX, maxX, minY, maxY, boxW, boxH, pixelCount });
                 }
             }
         }
     }
     
-    // Put the modified pixels (with green removed) back to the canvas
-    tempCtx.putImageData(imageData, 0, 0);
-    
-    // Filter and sort boxes
-    let validBoxes = boxes.filter(b => (b.maxX - b.minX) > 40 && (b.maxY - b.minY) > 40);
-    validBoxes.sort((a, b) => {
-        if (Math.abs(a.minY - b.minY) > 50) {
-            return a.minY - b.minY; // Sort by Y first
+    // Sort boxes in natural reading order: top-to-bottom, left-to-right
+    rawBoxes.sort((a, b) => {
+        const avgH = (a.boxH + b.boxH) / 2;
+        if (Math.abs(a.minY - b.minY) > avgH * 0.35) {
+            return a.minY - b.minY;
         }
-        return a.minX - b.minX; // Then by X
+        return a.minX - b.minX;
     });
     
-    return { boxes: validBoxes, processedCanvas: tempCanvas };
+    console.log(`findTemplateSlots: Detected ${rawBoxes.length} frames:`, rawBoxes);
+    
+    return { boxes: rawBoxes, processedCanvas: tempCanvas };
 }
 
 async function processPhotobooth() {
