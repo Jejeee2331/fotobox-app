@@ -1,3 +1,4 @@
+const basePath = import.meta.env.BASE_URL;
 const video = document.getElementById('camera-feed');
 const captureBtn = document.getElementById('capture-btn');
 const flipBtn = document.getElementById('flip-btn');
@@ -46,7 +47,7 @@ templatePreviewIcons.forEach(icon => {
         const btn = icon.closest('.template-option');
         const templateName = btn.dataset.template;
         
-        templatePreviewImg.src = `./Assets/${templateName}.png`;
+        templatePreviewImg.src = `${basePath}Assets/${templateName}.png`;
         templatePreviewModal.classList.remove('hidden');
     });
 });
@@ -131,14 +132,16 @@ async function initCamera() {
     }
 
     try {
-        // Fallback-friendly constraints for desktop/laptop webcams
+        // Use 'exact' for environment (back camera) to force it on mobile
+        const constraints = {
+            video: currentFacingMode === 'environment'
+                ? { facingMode: { exact: 'environment' } }
+                : { facingMode: 'user' },
+            audio: false
+        };
+        
         try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: currentFacingMode
-                },
-                audio: false
-            });
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
         } catch (constraintErr) {
             console.warn("Facing mode constraint failed, fallback to basic video...", constraintErr);
             stream = await navigator.mediaDevices.getUserMedia({
@@ -176,7 +179,7 @@ flipBtn.addEventListener('click', async () => {
 function loadTemplate(name) {
     name = name || currentTemplateName;
     templateImage = new Image();
-    templateImage.src = `./Assets/${name}.png`;
+    templateImage.src = `${basePath}Assets/${name}.png`;
     templateImage.onload = () => {
         console.log(`Template "${name}" loaded`, templateImage.width, templateImage.height);
         // Resize final canvas based on template size
