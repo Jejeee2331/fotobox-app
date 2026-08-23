@@ -346,8 +346,9 @@ function findTemplateSlots(img) {
         const b = data[i + 2];
         const a = data[i + 3];
         
-        // Detect greenscreen OR transparency
-        const isGreen = a > 50 && g > 75 && (g - r) > 20 && (g - b) > 20;
+        // Detect chroma greenscreen OR transparency
+        // Typical greenscreen has strong green dominance (g - r > 35, g - b > 35, g > 85)
+        const isGreen = a > 50 && g > 85 && (g - r) > 35 && (g - b) > 35;
         const isTransparent = a < 30;
         
         if (isGreen || isTransparent) {
@@ -365,6 +366,10 @@ function findTemplateSlots(img) {
     const visited = new Uint8Array(totalPixels);
     const queue = new Int32Array(totalPixels);
     const rawBoxes = [];
+    
+    // Calculate dynamic minimum area (at least 0.5% of total template size)
+    const minFrameArea = Math.max(800, totalPixels * 0.005);
+    const minDim = Math.max(30, Math.min(width, height) * 0.04);
     
     for (let y = 0; y < height; y++) {
         for (let x = 0; x < width; x++) {
@@ -426,12 +431,10 @@ function findTemplateSlots(img) {
                 
                 const boxW = maxX - minX + 1;
                 const boxH = maxY - minY + 1;
+                const aspectRatio = boxW / boxH;
                 
-                // Filter out small noise artifacts (like tiny green leaves/decorations)
-                const minDimension = Math.max(20, Math.min(width, height) * 0.03);
-                const minPixels = Math.max(200, (minDimension * minDimension) * 0.25);
-                
-                if (boxW >= minDimension && boxH >= minDimension && pixelCount >= minPixels) {
+                // Filter out small decorations, text, or leaves that aren't real photo frames
+                if (boxW >= minDim && boxH >= minDim && pixelCount >= minFrameArea && aspectRatio >= 0.2 && aspectRatio <= 5.0) {
                     rawBoxes.push({ minX, maxX, minY, maxY, boxW, boxH, pixelCount });
                 }
             }
