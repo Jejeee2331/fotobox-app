@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Premium Fotobox</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <h1>Fotobox</h1>
+      <p>Capture your moments</p>
+    </header>
+
+    <section class="template-selector">
+      <h3>Choose Template</h3>
+      <div class="template-options">
+        <button class="template-option active" data-template="Template" data-slots="5">
+          <img src="./Assets/Template.png" alt="Classic" />
+          <span>Classic</span>
+          <div class="template-preview-icon" title="Preview Template">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+        </button>
+        <button class="template-option" data-template="Yellow" data-slots="4">
+          <img src="./Assets/Yellow.png" alt="Yellow" />
+          <span>Yellow</span>
+          <div class="template-preview-icon" title="Preview Template">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+        </button>
+        <button class="template-option" data-template="Blue" data-slots="4">
+          <img src="./Assets/Blue.png" alt="Blue" />
+          <span>Blue</span>
+          <div class="template-preview-icon" title="Preview Template">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+          </div>
+        </button>
+        <label class="template-option" id="upload-template-label">
+          <div class="upload-placeholder">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+          <span>Custom</span>
+          <input type="file" id="template-upload-input" accept="image/*" class="hidden" />
+        </label>
+      </div>
+    </section>
+
+    <main>
+      <div class="camera-container">
+        <video id="camera-feed" class="mirrored" autoplay playsinline muted></video>
+        <div class="camera-overlay">
+          <div class="grid-lines"></div>
+        </div>
+        <button id="flip-btn" class="flip-btn" title="Flip Camera">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 4v5h-5"></path>
+            <path d="M4 20v-5h5"></path>
+            <path d="M20.49 9A9 9 0 0 0 5.64 5.64L4 9"></path>
+            <path d="M3.51 15a9 9 0 0 0 14.85 3.36L20 15"></path>
+          </svg>
+        </button>
+        <div id="loading-overlay" class="overlay hidden">
+          <div class="spinner"></div>
+          <p>Processing...</p>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="capture-btn">
+          <div class="inner-circle"></div>
+        </button>
+      </div>
+
+      <div class="gallery-section">
+        <h3>Your Photos <span class="count-badge"><span id="photo-count">0</span>/5</span></h3>
+        <div class="gallery" id="gallery">
+          <!-- Thumbnails will be appended here -->
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button id="reset-btn" class="secondary-btn hidden">Reset All</button>
+        <button id="generate-btn" class="primary-btn hidden">Generate Result</button>
+      </div>
+    </main>
+
+    <!-- Photo Preview Modal -->
+    <div id="preview-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Photo Preview</h2>
+        <div class="preview-img-wrapper">
+          <img id="preview-img" src="" alt="Photo Preview" />
+        </div>
+        <div class="modal-actions">
+          <button id="delete-preview-btn" class="danger-btn">Delete Photo</button>
+          <button id="close-preview-btn" class="secondary-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="result-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Your Photobooth</h2>
+        <canvas id="final-canvas" width="661" height="654"></canvas>
+        <div class="modal-actions">
+          <button id="download-btn" class="primary-btn">Download</button>
+          <button id="close-modal-btn" class="secondary-btn">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Preview Modal -->
+    <div id="template-preview-modal" class="modal hidden">
+      <div class="modal-content">
+        <h2>Template Preview</h2>
+        <div class="preview-img-wrapper">
+          <img id="template-preview-img" src="" alt="Template Preview" />
+        </div>
+        <div class="modal-actions">
+          <button id="close-template-preview-btn" class="secondary-btn" style="width: 100%;">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./main.js"></script>
+</body>
+
+</html>
