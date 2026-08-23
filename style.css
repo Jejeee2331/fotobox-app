@@ -127,14 +127,16 @@ header p {
   transition: color 0.3s ease;
 }
 
-.template-option:hover {
-  border-color: rgba(255, 255, 255, 0.25);
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-}
+@media (hover: hover) {
+  .template-option:hover {
+    border-color: rgba(255, 255, 255, 0.25);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
 
-.template-option:hover img {
-  transform: scale(1.02);
+  .template-option:hover img {
+    transform: scale(1.02);
+  }
 }
 
 .template-preview-icon {
@@ -156,8 +158,16 @@ header p {
   z-index: 10;
 }
 
-.template-option:hover .template-preview-icon {
-  opacity: 1;
+@media (hover: hover) {
+  .template-option:hover .template-preview-icon {
+    opacity: 1;
+  }
+}
+
+@media (hover: none) {
+  .template-preview-icon {
+    opacity: 0.9;
+  }
 }
 
 .template-preview-icon:hover {
